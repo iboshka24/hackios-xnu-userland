@@ -87,6 +87,9 @@ class PreparationTests(unittest.TestCase):
             path.write_bytes(plistlib.dumps(value))
             with self.assertRaisesRegex(ValueError, "RecoveryOS"):
                 prepare.check_version(root, {"version": "27.0.1", "build": "24A446"})
+            value["ReleaseType"] = "Restore"
+            path.write_bytes(plistlib.dumps(value))
+            self.assertEqual(prepare.check_version(root, {"version": "27.0.1", "build": "24A446"}, "Restore"), value)
 
     def test_real_apfs_probe_builder_with_synthetic_binaries(self):
         with tempfile.TemporaryDirectory() as folder:

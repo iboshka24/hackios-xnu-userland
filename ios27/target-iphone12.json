@@ -1,0 +1,10 @@
+{
+  "product": "iPhone13,2",
+  "board": "d53gap",
+  "version": "27.0.1",
+  "build": "24A446",
+  "url": "https://updates.cdn-apple.com/2026FallFCS/8cd410bb-bddb-4483-8638-ac75d2c5e944/iPhone13,2,iPhone13,3_27.0.1_24A446_Restore.ipsw",
+  "size": 11302449360,
+  "ipsw_sha256": "31958fb5eaaf70eaeb50d74296ca6a107002871483d94969b543b284afdb122b",
+  "catalog": "https://api.ipsw.me/v4/device/iPhone13,2?type=ipsw"
+}

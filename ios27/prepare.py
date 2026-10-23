@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare real iOS 27 RecoveryOS core and an exec-admission APFS probe.
+"""Prepare real iOS 27 RecoveryOS/RestoreRamDisk core and an exec-admission APFS probe.
 
 This does not build a complete iOS 27 system image or implement ARM64e_X1 in XNU.
 """
@@ -18,12 +18,12 @@ import fetch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def check_version(root, target):
+def check_version(root, target, expected_release="Darwin Recovery"):
     version = plistlib.loads((root / "System/Library/CoreServices/SystemVersion.plist").read_bytes())
     if version.get("ProductVersion") != target["version"] or version.get("ProductBuildVersion") != target["build"]:
         raise ValueError("extracted SystemVersion does not match the target")
-    if version.get("ReleaseType") != "Darwin Recovery":
-        raise ValueError("this preparation path expects RecoveryOS, not the complete iOS rootfs")
+    if version.get("ReleaseType") != expected_release:
+        raise ValueError(f"expected {expected_release} image, not the complete iOS rootfs (RecoveryOS/Restore distinction)")
     return {key: version.get(key) for key in ("ProductVersion", "ProductBuildVersion", "ReleaseType")}
 
 
@@ -47,8 +47,10 @@ def main(argv=None):
     parser.add_argument("--ipsw-tool", required=True, type=Path)
     parser.add_argument("--sevenzip", required=True, type=Path)
     parser.add_argument("--cache", type=Path, default=fetch.HERE / "artifacts/recovery")
+    parser.add_argument("--target", type=Path, default=fetch.HERE / "target.json")
+    parser.add_argument("--component", choices=("OS", "RestoreRamDisk"), default="OS")
     args = parser.parse_args(argv)
-    target = fetch.load_target(fetch.HERE / "target.json")
+    target = fetch.load_target(args.target)
     ipsw, sevenzip = args.ipsw_tool.resolve(), args.sevenzip.resolve()
     if not ipsw.is_file() or not sevenzip.is_file():
         raise ValueError("ipsw-tool and sevenzip must be existing executables")
@@ -56,33 +58,39 @@ def main(argv=None):
     if report["target"] != target:
         raise ValueError("cached inventory belongs to a different target")
     identity = next((item for item in report["identities"] if item["index"] == report["selected_identity"]), None)
-    if identity is None or identity["variant"] != "Recovery Customer Install":
-        raise ValueError("cache must be fetched with --identity 4 (Recovery Customer Install)")
-    os_component = next((item for item in report["extracted"] if item["component"] == "OS"), None)
+    if identity is None or (args.component == "OS" and identity["variant"] != "Recovery Customer Install"):
+        raise ValueError("cache must select its board's Recovery Customer Install identity")
+    os_component = next((item for item in report["extracted"] if item["component"] == args.component), None)
     if os_component is None:
-        raise ValueError("RecoveryOS component is not extracted; run fetch.py --identity 4 --component OS")
+        raise ValueError(f"component is not extracted: {args.component}")
     source = Path(os_component["path"]).resolve()
     if fetch.file_sha256(source) != os_component["sha256"]:
-        raise ValueError("cached RecoveryOS differs from the verified download")
+        raise ValueError("cached component differs from the verified download")
     out = ROOT / "out"
     out.mkdir(exist_ok=True)
     session = Path(tempfile.mkdtemp(prefix="ios27-core-", dir=out))
     decrypted, root = session / "decrypted", session / "rootfs"
     decrypted.mkdir()
-    subprocess.run([str(ipsw), "fw", "aea", str(source), "--output", str(decrypted)], check=True, timeout=180)
-    images = list(decrypted.glob("*.dmg"))
+    if args.component == "OS":
+        subprocess.run([str(ipsw), "fw", "aea", str(source), "--output", str(decrypted)], check=True, timeout=180)
+        images = list(decrypted.glob("*.dmg"))
+    else:
+        image = decrypted / "restore.apfs"
+        subprocess.run([str(ipsw), "img4", "im4p", "extract", str(source), "--output", str(image)], check=True, timeout=180)
+        images = [image] if image.is_file() else []
     if len(images) != 1:
-        raise ValueError("AEA decryption did not produce exactly one DMG")
+        raise ValueError("component decoding did not produce exactly one image")
     subprocess.run([str(sevenzip), "x", "-y", f"-o{root}", str(images[0]),
                     "sbin/launchd", "usr/lib/dyld", "System/Library/CoreServices/SystemVersion.plist"],
                    check=True, timeout=180, stdout=subprocess.DEVNULL)
-    system = check_version(root, target)
+    system = check_version(root, target, "Darwin Recovery" if args.component == "OS" else "Restore")
     binaries = {name: inspect_file(root / name) for name in ("sbin/launchd", "usr/lib/dyld")}
     probe = build_probe(root, session)
     result = {"target": target, "system": system, "binaries": binaries,
               "probe_image": str(probe), "probe_sha256": fetch.file_sha256(probe),
               "image_kind": "exec_admission_probe_not_complete_ios", "ios27_boot_verified": False,
-              "blockers": ["XNU 8796 baseline has no ARM64e_X1 user-process ABI",
+              "blockers": ["Process ABI is not validated on the XNU 8796 baseline: " +
+                           ", ".join(sorted({item["architecture"] for item in binaries.values()})),
                            "Complete iOS 27 frameworks, shared-cache setup and launchd services are not integrated"]}
     (session / "core.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"iOS 27 core prepared, not boot-verified: {session / 'core.json'}")
