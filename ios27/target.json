@@ -1,0 +1,10 @@
+{
+  "product": "iPhone19,2",
+  "board": "v63ap",
+  "version": "27.0.1",
+  "build": "24A446",
+  "url": "https://updates.cdn-apple.com/2026FallFCS/8cd333d4-1025-4e89-99a2-1373d2b5bfcb/iPhone19,2_27.0.1_24A446_Restore.ipsw",
+  "size": 12761486095,
+  "ipsw_sha256": "53310afbc73d3868f6db19a92be3ef7c8ac6150ac200143e6b4385e4aa7a9c41",
+  "catalog": "https://api.ipsw.me/v4/device/iPhone19,2?type=ipsw"
+}
