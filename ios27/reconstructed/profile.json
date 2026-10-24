@@ -1,0 +1,13 @@
+{
+  "artifact": "iPhone19,2 27.0.1 24A446 kernelcache.release.v6x-pandia.decompressed",
+  "kernel_sha256": "dec73956a9a443c5bb2e4aa7d6310c4133720e7333a8c42280f8fd79f54b3e13",
+  "fileset_entry": "com.apple.kernel",
+  "function_identity": "ml_grade_binary, correlated with public XNU source and control flow; symbol stripped",
+  "function_va": "0xfffffe000b2936f8",
+  "function_size": 204,
+  "function_sha256": "75ba863f6725fa822b4fc1f965d7613a1fbf09f9163d67993aab213ef4db8320",
+  "thread_cpu_pointer_offset": 440,
+  "cpu_subtype_offset": 8,
+  "reference_url": "https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/dev/arm/kern_machdep.c",
+  "original_source_recovered": false
+}
