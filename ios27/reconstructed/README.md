@@ -2,6 +2,9 @@
 
 **This is reconstructed C behavior, not Apple's original source and not a complete iOS reconstruction.**
 
+The subsequent [dyld batch](DYLD_BATCH.md) adds 19 symbol-identified methods,
+native C APIs and 133,298 additional binary/C comparisons.
+
 ## Input and identification
 
 Input: iPhone19,2 / iOS 27.0.1 / 24A446,
